@@ -1,0 +1,385 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projetos</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: auto; }
+        h1 { text-align: center; }
+        section { margin: 40px 0; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
+        input, button { padding: 10px; margin: 5px; }
+        .error { color: red; font-size: 12px; }
+        .valid { border: 2px solid green; }
+        .invalid { border: 2px solid red; }
+        .tic-tac-toe { display: grid; grid-template-columns: repeat(3, 100px); gap: 5px; }
+        .cell { width: 100px; height: 100px; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 40px; cursor: pointer; }
+        .slider { position: relative; width: 100%; height: 300px; overflow: hidden; }
+        .slide { position: absolute; width: 100%; height: 100%; transition: transform 0.5s; }
+        .slide img {  height: 100%; }
+        .nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 10px; cursor: pointer; }
+        .prev { left: 10px; }
+        .next { right: 10px; }
+        .comment { border-bottom: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+        .current-user { background: #e0f7fa; }
+        .sidebar { position: fixed; top: 0; left: -250px; width: 250px; height: 100%; background: #333; color: white; transition: left 0.3s; }
+        .sidebar.active { left: 0; }
+        .sidebar ul { list-style: none; padding: 20px; }
+        .sidebar li { margin: 10px 0; }
+        .toggle-btn { position: fixed; top: 20px; left: 20px; cursor: pointer; }
+        nav { background: #333; padding: 10px; }
+        nav a { color: white; margin: 0 15px; text-decoration: none; }
+        .todo-item { padding: 10px; margin: 5px; background: #f9f9f9; cursor: move; }
+        .todo-item.dragging { opacity: 0.5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Projetos</h1>
+
+        <!-- Formulário com Validação -->
+        <section id="form-section">
+            <h2>Formulário de Registro</h2>
+            <form id="register-form">
+                <input type="text" id="name" placeholder="Nome" required>
+                <div id="name-error" class="error"></div>
+                <input type="email" id="email" placeholder="E-mail" required>
+                <div id="email-error" class="error"></div>
+                <input type="password" id="password" placeholder="Senha" required>
+                <div id="password-error" class="error"></div>
+                <button type="submit">Registrar</button>
+            </form>
+        </section>
+
+        <!-- Jogo da Velha -->
+        <section id="tic-tac-toe-section">
+            <h2>Jogo da Velha</h2>
+            <div class="tic-tac-toe" id="board">
+                <div class="cell" data-index="0"></div>
+                <div class="cell" data-index="1"></div>
+                <div class="cell" data-index="2"></div>
+                <div class="cell" data-index="3"></div>
+                <div class="cell" data-index="4"></div>
+                <div class="cell" data-index="5"></div>
+                <div class="cell" data-index="6"></div>
+                <div class="cell" data-index="7"></div>
+                <div class="cell" data-index="8"></div>
+            </div>
+            <p id="game-status">Vez do jogador: X</p>
+            <button id="reset-game">Reiniciar</button>
+        </section>
+
+        <!-- Slider de Imagens -->
+        <section id="slider-section">
+            <h2>Slider de Imagens</h2>
+            <div class="slider" id="slider">
+                <div class="slide"><img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Gustavo_Lima_2021.jpg" alt="Slide 1"></div>
+                <div class="slide"><img src="https://s2-g1.glbimg.com/zowyjbBsYbIS-7Oi_NE2ZzrtfRc=/0x0:1440x1800/924x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_59edd422c0c84a879bd37670ae4f538a/internal_photos/bs/2024/O/M/r5mtYjRvuFg7x0xwQfAA/gusttavolimafoto.jpg" alt="Slide 2"></div>
+                <div class="slide"><img src="https://cdn-images.dzcdn.net/images/artist/c2c4c05cc59dc304097e2d3e0344788f/1900x1900-000000-80-0-0.jpg" alt="Slide 3"></div>
+            </div>
+            <button class="nav-btn prev" id="prev">&larr;</button>
+            <button class="nav-btn next" id="next">&rarr;</button>
+        </section>
+
+        <!-- Sistema de Comentários -->
+        <section id="comments-section">
+            <h2>Comentários</h2>
+            <input type="text" id="comment-input" placeholder="Digite seu comentário">
+            <button id="post-comment">Postar</button>
+            <div id="comments-list"></div>
+        </section>
+
+        <!-- Menu Lateral -->
+        <section id="sidebar-section">
+            <h2>Menu Lateral</h2>
+            <div class="toggle-btn" id="toggle-sidebar">☰</div>
+            <div class="sidebar" id="sidebar">
+                <ul>
+                    <li><a href="#form-section">Formulário</a></li>
+                    <li><a href="#tic-tac-toe-section">Jogo da Velha</a></li>
+                    <li><a href="#slider-section">Slider</a></li>
+                    <li><a href="#comments-section">Comentários</a></li>
+                    <li><a href="#todo-section">To-Do List</a></li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Scroll Suave -->
+        <section id="scroll-section">
+            <h2>Navegação com Scroll Suave</h2>
+            <nav>
+                <a href="#form-section">Formulário</a>
+                <a href="#tic-tac-toe-section">Jogo da Velha</a>
+                <a href="#slider-section">Slider</a>
+                <a href="#comments-section">Comentários</a>
+                <a href="#todo-section">To-Do List</a>
+            </nav>
+        </section>
+
+        <!-- To-Do List -->
+        <section id="todo-section">
+            <h2>To-Do List</h2>
+            <input type="text" id="todo-input" placeholder="Nova tarefa">
+            <button id="add-todo">Adicionar</button>
+            <div id="todo-list"></div>
+        </section>
+    </div>
+
+    <script>
+        // Formulário com Validação
+        const form = document.getElementById('register-form');
+        const nameInput = document.getElementById('name');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const nameError = document.getElementById('name-error');
+        const emailError = document.getElementById('email-error');
+        const passwordError = document.getElementById('password-error');
+
+        nameInput.addEventListener('input', () => {
+            if (nameInput.value.length < 3) {
+                nameError.textContent = 'Nome deve ter pelo menos 3 caracteres';
+                nameInput.classList.add('invalid');
+                nameInput.classList.remove('valid');
+            } else {
+                nameError.textContent = '';
+                nameInput.classList.add('valid');
+                nameInput.classList.remove('invalid');
+            }
+        });
+
+        emailInput.addEventListener('input', () => {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(emailInput.value)) {
+                emailError.textContent = 'E-mail inválido';
+                emailInput.classList.add('invalid');
+                emailInput.classList.remove('valid');
+            } else {
+                emailError.textContent = '';
+                emailInput.classList.add('valid');
+                emailInput.classList.remove('invalid');
+            }
+        });
+
+        passwordInput.addEventListener('input', () => {
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+            if (!passwordRegex.test(passwordInput.value)) {
+                passwordError.textContent = 'Senha deve ter 8 caracteres, incluindo maiúscula, minúscula e número';
+                passwordInput.classList.add('invalid');
+                passwordInput.classList.remove('valid');
+            } else {
+                passwordError.textContent = '';
+                passwordInput.classList.add('valid');
+                passwordInput.classList.remove('invalid');
+            }
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (nameInput.classList.contains('valid') && emailInput.classList.contains('valid') && passwordInput.classList.contains('valid')) {
+                alert('Formulário enviado com sucesso!');
+                form.reset();
+                nameInput.classList.remove('valid');
+                emailInput.classList.remove('valid');
+                passwordInput.classList.remove('valid');
+            }
+        });
+
+        // Jogo da Velha
+        const cells = document.querySelectorAll('.cell');
+        const gameStatus = document.getElementById('game-status');
+        const resetGame = document.getElementById('reset-game');
+        let currentPlayer = 'X';
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let gameActive = true;
+
+        const winConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        cells.forEach(cell => {
+            cell.addEventListener('click', () => {
+                const index = cell.dataset.index;
+                if (board[index] === '' && gameActive) {
+                    board[index] = currentPlayer;
+                    cell.textContent = currentPlayer;
+                    if (checkWin()) {
+                        gameStatus.textContent = `Jogador ${currentPlayer} venceu!`;
+                        gameActive = false;
+                    } else if (board.every(cell => cell !== '')) {
+                        gameStatus.textContent = 'Empate!';
+                        gameActive = false;
+                    } else {
+                        currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                        gameStatus.textContent = `Vez do jogador: ${currentPlayer}`;
+                    }
+                }
+            });
+        });
+
+        resetGame.addEventListener('click', () => {
+            board = ['', '', '', '', '', '', '', '', ''];
+            cells.forEach(cell => cell.textContent = '');
+            currentPlayer = 'X';
+            gameStatus.textContent = 'Vez do jogador: X';
+            gameActive = true;
+        });
+
+        function checkWin() {
+            return winConditions.some(condition => {
+                return condition.every(index => board[index] === currentPlayer);
+            });
+        }
+
+        // Slider de Imagens
+        const slides = document.querySelectorAll('.slide');
+        const prevBtn = document.getElementById('prev');
+        const nextBtn = document.getElementById('next');
+        let currentSlide = 0;
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                slide.style.transform = `translateX(${(i - index) * 100}%)`;
+            });
+        }
+
+        prevBtn.addEventListener('click', () => {
+            currentSlide = (currentSlide === 0) ? slides.length - 1 : currentSlide - 1;
+            showSlide(currentSlide);
+        });
+
+        nextBtn.addEventListener('click', () => {
+            currentSlide = (currentSlide === slides.length - 1) ? 0 : currentSlide + 1;
+            showSlide(currentSlide);
+        });
+
+        setInterval(() => {
+            currentSlide = (currentSlide === slides.length - 1) ? 0 : currentSlide + 1;
+            showSlide(currentSlide);
+        }, 5000);
+
+        showSlide(currentSlide);
+
+        // Sistema de Comentários
+        const commentInput = document.getElementById('comment-input');
+        const postComment = document.getElementById('post-comment');
+        const commentsList = document.getElementById('comments-list');
+
+        postComment.addEventListener('click', () => {
+            if (commentInput.value.trim()) {
+                const comment = document.createElement('div');
+                comment.classList.add('comment', 'current-user');
+                comment.textContent = commentInput.value;
+                commentsList.prepend(comment);
+                commentInput.value = '';
+            }
+        });
+
+        // Menu Lateral
+        const toggleSidebar = document.getElementById('toggle-sidebar');
+        const sidebar = document.getElementById('sidebar');
+
+        toggleSidebar.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+        });
+
+        // Scroll Suave
+        document.querySelectorAll('nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href');
+                document.querySelector(targetId).scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+
+        // To-Do List com Drag and Drop
+        const todoInput = document.getElementById('todo-input');
+        const addTodo = document.getElementById('add-todo');
+        const todoList = document.getElementById('todo-list');
+
+        addTodo.addEventListener('click', () => {
+            if (todoInput.value.trim()) {
+                const todoItem = document.createElement('div');
+                todoItem.classList.add('todo-item');
+                todoItem.draggable = true;
+                todoItem.textContent = todoInput.value;
+                todoList.appendChild(todoItem);
+                todoInput.value = '';
+
+                todoItem.addEventListener('dragstart', () => {
+                    todoItem.classList.add('dragging');
+                });
+
+                todoItem.addEventListener('dragend', () => {
+                    todoItem.classList.remove('dragging');
+                });
+            }
+        });
+
+        todoList.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(todoList, e.clientY);
+            const draggable = document.querySelector('.dragging');
+            if (afterElement == null) {
+                todoList.appendChild(draggable);
+            } else {
+                todoList.insertBefore(draggable, afterElement);
+            }
+        });
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.todo-item:not(.dragging)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+    </script>
+</body>
+</html>
